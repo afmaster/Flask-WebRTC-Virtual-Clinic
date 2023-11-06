@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>List of sessions</title>
+</head>
+<body>
+
+{% for ch in session_list %}
+
+    <a href="/get_available_sessions?chosen_session={{ch}}">{{ ch }}</a>
+
+{% endfor %}
+
+</body>
+</html>

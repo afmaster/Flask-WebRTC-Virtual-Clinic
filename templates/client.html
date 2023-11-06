@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.2/dist/peerjs.min.js"></script>
+<title>Video Chat</title>
+</head>
+<body>
+
+<video id="local-video" autoplay></video>
+<video id="remote-video" autoplay></video>
+<button id="start-call-button">Iniciar Chamada</button>
+
+<script type="text/javascript">
+
+    const sessionId = '{{ session_id }}';
+
+    async function getRemoteOffer(sessionId) {
+        const response = await fetch(`/get-offer/${sessionId}`);
+        const data = await response.json();
+        return data.offer;
+    }
+
+    async function sendOffer(sessionId, offer) {
+        const response = await fetch('/offer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ session_id: sessionId, offer: offer })
+        });
+        return response.json();
+    }
+
+    async function sendAnswer(sessionId, answer) {
+        const response = await fetch('/answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ session_id: sessionId, answer: answer })
+        });
+        return response.json();
+    }
+
+    const peerConnection = new RTCPeerConnection();
+
+    peerConnection.onicecandidate = async (event) => {
+        if (event.candidate) {
+            try {
+                // Passar o session_id para a função sendIceCandidate
+                await sendIceCandidate(sessionId, event.candidate);
+            } catch (error) {
+                console.error('Failed to send ICE candidate:', error);
+            }
+        }
+    };
+
+    async function sendIceCandidate(sessionId, candidate) {
+        const response = await fetch('/ice-candidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            // Incluir o session_id no corpo da requisição
+            body: JSON.stringify({ session_id: sessionId, candidate: candidate })
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to send ICE candidate: ${response.statusText}`);
+        }
+    }
+
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+            document.getElementById('local-video').srcObject = stream;
+            peerConnection.addStream(stream);
+
+            // Suponha que você tenha um ID de sessão predefinido
+
+            // Ouvinte de evento de clique para o botão
+            document.getElementById('start-call-button').addEventListener('click', function() {
+                peerConnection.createOffer()
+                    .then(offer => peerConnection.setLocalDescription(offer))
+                    .then(() => sendOffer(sessionId, peerConnection.localDescription))
+                    .then(() => getRemoteOffer(sessionId))
+                    .then(remoteOffer => peerConnection.setRemoteDescription(new RTCSessionDescription(remoteOffer)));
+            });
+        });
+
+    peerConnection.onaddstream = (event) => {
+        document.getElementById('remote-video').srcObject = event.stream;
+    };
+</script>
+
+
+</body>
+</html>
