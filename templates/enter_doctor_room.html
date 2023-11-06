@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Call</title>
+</head>
+<body>
+
+<!-- Seus outros elementos HTML vão aqui -->
+
+<script>
+    // Suponha que a variável 'answer' contém a resposta SDP renderizada pelo Jinja2
+    const answer = {{ answer | tojson | safe }};
+
+    // Suponha que 'peerConnection' é a sua conexão RTCPeerConnection já estabelecida anteriormente
+    const peerConnection = new RTCPeerConnection();
+
+    // Aqui você define a descrição remota usando a resposta recebida do cliente 2
+    peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+    .then(() => {
+        console.log("Descrição remota configurada com sucesso.");
+        // A descrição remota foi configurada com sucesso, agora você pode continuar com o processo
+        // Talvez iniciar a coleta de candidatos ICE ou esperar por streams, dependendo do seu fluxo de sinalização
+    })
+    .catch(error => {
+        console.error("Falha ao configurar a descrição remota: ", error);
+    });
+
+    // Aqui você pode adicionar o resto do seu código para manipular eventos de candidatos ICE e fluxos de mídia
+
+</script>
+
+</body>
+</html>

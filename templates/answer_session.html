@@ -57,7 +57,13 @@
         throw new Error('Network response was not ok.');
       }
     })
-    .then(data => console.log('SDP answer sent successfully:', data))
+    .then(data => {
+      console.log('SDP answer sent successfully:', data);
+      // Se a resposta for 'ok', redireciona para '/doctor_room'
+      if (data.status === 'ok') {
+        window.location.href = '/doctor_room';
+      }
+    })
     .catch(error => console.error('Error during SDP negotiation:', error));
 </script>
 

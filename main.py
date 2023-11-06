@@ -248,8 +248,23 @@ def answer_session():
     print('args', args)
 
     if 'type' in args:
-        print('entrou no args')
-        return json.dumps(args)
+        try:
+            print('entrou no args')
+            dic = {
+                'chosen_session': session['chosen_session'],
+                'answer': json.dumps(args)
+            }
+            db_tricks.change_row(
+                db_file='sessions.db',
+                db='answers',
+                field='chosen_session',
+                criteria=session['chosen_session'],
+                dic=dic
+            )
+            return jsonify({'status': 'ok'})
+        except Exception as e:
+            print(f"Exception in offer: {e}")
+            return jsonify({'error': 'Internal Server Error'}), 500
     else:
 
         ch = db_tricks.search_row(
@@ -267,7 +282,33 @@ def answer_session():
 
 @app.route('/waiting_room', methods=['GET', 'POST'])
 def waiting_room():  # Função para aguardar aceite de sessão do cliente 2
-    ...
+
+    row = db_tricks.search_row(
+        db_file='sessions.db',
+        db='answers',
+        field='chosen_session',
+        criteria=session['session_id']
+    )
+    if row is None:
+        return render_template('waiting_room.html')
+    else:
+        return redirect(url_for('enter_doctor_room'))
+
+
+@app.route('/doctor_room', methods=['GET', 'POST'])
+def doctor_room():  # Função o médico aguardar o paciente
+    return 'doctor room'
+
+
+@app.route('/enter_doctor_room', methods=['GET', 'POST'])
+def enter_doctor_room():  # Função quando o paciente iniciará o processo de vídeo chamada
+    row = db_tricks.search_row(
+        db_file='sessions.db',
+        db='answers',
+        field='chosen_session',
+        criteria=session['session_id']
+    )
+    return render_template('enter_doctor_room.html', answer=row[1])
 
 
 if __name__ == '__main__':
