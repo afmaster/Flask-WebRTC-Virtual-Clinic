@@ -26,7 +26,34 @@
         console.error("Falha ao configurar a descrição remota: ", error);
     });
 
+
+
     // Aqui você pode adicionar o resto do seu código para manipular eventos de candidatos ICE e fluxos de mídia
+
+    async function sendIceCandidate(sessionId, candidate) {
+        const response = await fetch('/ice-candidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            // Incluir o session_id no corpo da requisição
+            body: JSON.stringify({ session_id: sessionId, candidate: candidate })
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to send ICE candidate: ${response.statusText}`);
+        }
+    }
+
+    peerConnection.onicecandidate = async (event) => {
+        if (event.candidate) {
+            try {
+                // Passar o session_id para a função sendIceCandidate
+                await sendIceCandidate(sessionId, event.candidate);
+            } catch (error) {
+                console.error('Failed to send ICE candidate:', error);
+            }
+        }
+    };
 
 </script>
 
