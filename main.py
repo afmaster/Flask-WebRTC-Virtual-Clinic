@@ -370,9 +370,27 @@ def get_ice_candidates_from_doctor():
         field='session_id',
         criteria=session_id
     )
+    if candidates is None:
+        return '', 204
+    else:
+        candidate_list = list(candidates)
+
+        return jsonify(candidate_list)
+
+@app.route('/get-ice-candidate-from-client', methods=['GET', 'POST'])
+def get_ice_candidates_from_client():
+    session_id = request.args.get('session_id')
+
+    candidates = db_tricks.search_entire_db(
+        db_file='sessions.db',
+        db='client_ice_candidates',
+        field='session_id',
+        criteria=session_id
+    )
     candidate_list = list(candidates)
 
     return jsonify(candidate_list)
+
 
 
 if __name__ == '__main__':

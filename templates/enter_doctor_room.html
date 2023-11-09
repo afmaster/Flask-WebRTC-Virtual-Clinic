@@ -11,6 +11,7 @@
 <script>
     // Suponha que a variável 'answer' contém a resposta SDP renderizada pelo Jinja2
     const answer = {{ answer | tojson | safe }};
+    const sessionId = '{{ session_id }}';
 
     // Suponha que 'peerConnection' é a sua conexão RTCPeerConnection já estabelecida anteriormente
     const peerConnection = new RTCPeerConnection();
