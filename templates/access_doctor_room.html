@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <title>Video Call</title>
 </head>
 <body>
@@ -12,9 +21,9 @@
 
 <script>
 
-    const answer = {{ answer | tojson | safe }};
     const sessionId = '{{ session_id }}';
     const retryDelay = 8000;
+    const maxRetries = 10;
 
 
     const peerConnection = new RTCPeerConnection();
@@ -33,6 +42,29 @@
         } else {
             throw new Error('Network response was not ok.');
         }
+    }
+
+    async function getAnswer(sessionId) {
+        let response;
+        let retries = 0; // Contador de tentativas
+        do {
+            response = await fetch(`/get-answer?sessionId=${sessionId}`);
+            if (response.status === 204) {
+                console.log('Ainda não há resposta (answer), tentando novamente...');
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                retries++; // Incrementa o contador de tentativas
+                if (retries >= maxRetries) {
+                    throw new Error('Número máximo de tentativas alcançado.');
+                }
+            } else if (response.ok) {
+                const data = await response.json();
+                if (data.answer) {
+                    return data.answer;
+                }
+            } else {
+                throw new Error(`Erro ao buscar resposta (answer): ${response.statusText}`);
+            }
+        } while (true);
     }
 
 
@@ -65,18 +97,6 @@
 
 
 
-
-    peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-    .then(() => {
-        console.log("Descrição remota configurada com sucesso.");
-        fetchCandidates(); // Começa a buscar os candidatos ICE após a descrição remota ser configurada
-    })
-    .catch(error => {
-        console.error("Falha ao configurar a descrição remota: ", error);
-    });
-
-
-
     peerConnection.onicecandidate = event => {
         if (event.candidate) {
             sendIceCandidate(event.candidate)
@@ -94,7 +114,18 @@
             document.getElementById('local-video').srcObject = stream;
             stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
-        });
+            // Cria a oferta e configura a descrição local
+            return peerConnection.createOffer();
+        })
+        .then(offer => peerConnection.setLocalDescription(offer))
+        .then(() => sendOffer(sessionId, peerConnection.localDescription))
+        .then(() => getAnswer(sessionId))
+        .then(answer => {
+            // Configura a descrição remota com a resposta obtida
+            return peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        })
+        .then(() => fetchCandidates())
+        .catch(error => console.error('Error during offer-answer exchange:', error));
 
     peerConnection.ontrack = (event) => {
         const remoteVideo = document.getElementById('remote-video');
@@ -103,6 +134,7 @@
             console.log('Remote stream added.');
         }
     };
+
 
 </script>
 

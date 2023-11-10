@@ -7,47 +7,17 @@
 </head>
 <body>
 
-<button id="start-call-button">Solicitar Acesso</button>
+<h1> SOLICITAR ACESSO</h1>
 
-<script type="text/javascript">
+<form action="/request_access" method="post">
 
-    const sessionId = '{{ session_id }}';
+<button type="submit" name="action" value="request" id="start-call-button">Solicitar</button>
 
-    async function sendOffer(sessionId, offer) {
-        const response = await fetch('/offer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ session_id: sessionId, offer: offer })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            return data;
-        } else {
-            throw new Error('Network response was not ok.');
-        }
-    }
+</form>
 
-    const peerConnection = new RTCPeerConnection();
 
-    document.getElementById('start-call-button').addEventListener('click', function() {
-        peerConnection.createOffer()
-            .then(offer => peerConnection.setLocalDescription(offer))
-            .then(() => sendOffer(sessionId, peerConnection.localDescription))
-            .then(response => {
-                // Verifica se a resposta do servidor é 'ok'
-                if (response.status === 'ok') {
-                    // Redireciona para o caminho '/waiting_room'
-                    window.location.href = '/waiting_room';
-                } else {
-                    console.error('Unexpected response status:', response.status);
-                }
-            })
-            .catch(error => console.error('Error during offer process:', error));
-    });
 
-</script>
+
 
 </body>
 </html>

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, session, url_for, redirect
 import uuid
 import sqlite3
-from utils import db_tricks
+from utils import db_tricks, date_time_operations
 import json
 
 app = Flask(__name__)
@@ -49,6 +49,26 @@ def offer():
             dic=dic
         )
         return jsonify({'status': 'ok'})
+    except Exception as e:
+        print(f"Exception in offer: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+
+@app.route('/get-answer', methods=['GET'])
+def get_answer():
+    try:
+        data = request.get_json()
+        session_id = data['session_id']
+        answer = db_tricks.search_row(
+            db_file='sessions.db',
+            db='answers',
+            field='session_id',
+            criteria=session['chosen_session']
+        )
+        if answer is None:
+            return '', 204
+        else:
+            return jsonify({'answer': answer})
     except Exception as e:
         print(f"Exception in offer: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
@@ -189,29 +209,58 @@ def offer():
 #         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/request_access', methods=['GET', 'POST'])
-def index():
+def request_access():
+    args = request.args if request.args else request.form
     if 'session_id' in session:
         session_id = session['session_id']
     else:
         session_id = session['session_id'] = uuid.uuid4()
-    return render_template('request_access.html', session_id=session_id)
+    if 'action' in args:
+        if args.get('action') == 'request':
+            dic = {
+                'session_id': session_id,
+                'timestamp': date_time_operations.now()
+            }
+            db_tricks.change_row(
+                db_file='sessions.db',
+                db='requests',
+                field='session_id',
+                criteria=session_id,
+                dic=dic
+            )
+            return redirect(url_for('waiting_room'))
+
+    else:
+        return render_template('request_access.html', session_id=session_id)
 
 
 @app.route('/get_available_sessions', methods=['GET', 'POST'])
 def get_available_sessions():
     args = request.args if request.args else request.form
+
     if 'chosen_session' in args:
         session['chosen_session'] = args.get('chosen_session')
+        dic = {
+            'idd': 'a',
+            'session_id': session_id
+        }
+        db_tricks.change_row(
+            db_file='sessions.db',
+            db='accepted',
+            field='idd',
+            criteria='a',
+            dic=dic
+        )
+
         return redirect(url_for('answer_session'))
     else:
 
-        sessions_tuples = db_tricks.fetch_all_col(
+        session_list = db_tricks.fetch_entire_table(
             db_file='sessions.db',
-            db='sessions',
-            field='session_id',
+            db='requests'
         )
-
-        session_list = [ses[0] for ses in sessions_tuples]
+        if session_list is None:
+            session_list = []
 
         return render_template('get_available_sessions.html', session_list=session_list)
 
@@ -263,14 +312,14 @@ def waiting_room():  # Função para aguardar aceite de sessão do cliente 2
 
     row = db_tricks.search_row(
         db_file='sessions.db',
-        db='answers',
-        field='chosen_session',
+        db='accepted',
+        field='session_id',
         criteria=session['session_id']
     )
     if row is None:
         return render_template('waiting_room.html')
     else:
-        return redirect(url_for('enter_doctor_room'))
+        return redirect(url_for('access_doctor_room'))
 
 
 @app.route('/doctor_room', methods=['GET', 'POST'])
@@ -278,15 +327,10 @@ def doctor_room():  # Função o médico aguardar o paciente
     return 'doctor room'
 
 
-@app.route('/enter_doctor_room', methods=['GET', 'POST'])
-def enter_doctor_room():  # Função quando o paciente iniciará o processo de vídeo chamada
-    row = db_tricks.search_row(
-        db_file='sessions.db',
-        db='answers',
-        field='chosen_session',
-        criteria=session['session_id']
-    )
-    return render_template('enter_doctor_room.html', answer=row[1])
+@app.route('/access_doctor_room', methods=['GET', 'POST'])
+def access_doctor_room():
+
+    return render_template('access_doctor_room.html', session_id=session_id)
 
 
 

@@ -6,11 +6,15 @@
 </head>
 <body>
 
+<table>
 {% for ch in session_list %}
-
-    <p><a href="/get_available_sessions?chosen_session={{ch}}">{{ ch }}</a></p>
+    <tr>
+        <td><a href="/get_available_sessions?chosen_session={{ ch[0] }}">{{ ch[0] }}</a></td>
+        <td>{{ ch[1] }}</td>
+    </tr>
 
 {% endfor %}
+</table>
 
 </body>
 </html>
