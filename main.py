@@ -36,16 +36,60 @@ def offer():
         print('offer_sdp on offer:', offer_sdp)
         dic = {
             'session_id': str(session_id),
-            'offer': json.dumps(offer_sdp),
-            'answer': json.dumps(offer_sdp)
+            'offer': json.dumps(offer_sdp)
         }
 
         print('dic on offer:', dic)
         db_tricks.change_row(
             db_file='sessions.db',
-            db='sessions',
+            db='offers',
             field='session_id',
             criteria=session_id,
+            dic=dic
+        )
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        print(f"Exception in offer: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.route('/get-offer', methods=['GET'])
+def get_offer():
+    try:
+        data = request.get_json()
+        session_id = data['session_id']
+        answer = db_tricks.search_row(
+            db_file='sessions.db',
+            db='offers',
+            field='session_id',
+            criteria=session_id
+        )
+        if answer is None:
+            return '', 204
+        else:
+            return jsonify({'offer': answer[1]})
+
+    except Exception as e:
+        print(f"Exception in get_offer: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.route('/create-answer', methods=['POST'])
+def create_answer():
+    try:
+        args = request.json
+    except:
+        args = request.args if request.args else request.form
+
+    try:
+        print('entrou no args')
+        dic = {
+            'chosen_session': session['chosen_session'],
+            'answer': json.dumps(args)
+        }
+        db_tricks.change_row(
+            db_file='sessions.db',
+            db='answers',
+            field='chosen_session',
+            criteria=session['chosen_session'],
             dic=dic
         )
         return jsonify({'status': 'ok'})
@@ -63,7 +107,7 @@ def get_answer():
             db_file='sessions.db',
             db='answers',
             field='session_id',
-            criteria=session['chosen_session']
+            criteria=session_id
         )
         if answer is None:
             return '', 204
@@ -239,7 +283,7 @@ def get_available_sessions():
     args = request.args if request.args else request.form
 
     if 'chosen_session' in args:
-        session['chosen_session'] = args.get('chosen_session')
+        session['chosen_session'] = session_id = args.get('chosen_session')
         dic = {
             'idd': 'a',
             'session_id': session_id
@@ -252,7 +296,7 @@ def get_available_sessions():
             dic=dic
         )
 
-        return redirect(url_for('answer_session'))
+        return redirect(url_for('doctor_room'))  # answer_session
     else:
 
         session_list = db_tricks.fetch_entire_table(
@@ -264,47 +308,47 @@ def get_available_sessions():
 
         return render_template('get_available_sessions.html', session_list=session_list)
 
-
-
-@app.route('/answer_session', methods=['GET', 'POST'])
-def answer_session():
-    try:
-        args = request.json
-    except:
-        args = request.args if request.args else request.form
-    print('args', args)
-
-    if 'type' in args:
-        try:
-            print('entrou no args')
-            dic = {
-                'chosen_session': session['chosen_session'],
-                'answer': json.dumps(args)
-            }
-            db_tricks.change_row(
-                db_file='sessions.db',
-                db='answers',
-                field='chosen_session',
-                criteria=session['chosen_session'],
-                dic=dic
-            )
-            return jsonify({'status': 'ok'})
-        except Exception as e:
-            print(f"Exception in offer: {e}")
-            return jsonify({'error': 'Internal Server Error'}), 500
-    else:
-
-        ch = db_tricks.search_row(
-            db_file='sessions.db',
-            db='sessions',
-            field='session_id',
-            criteria=session['chosen_session']
-        )
-
-        chosen_session = ch[0]
-        sdp = ch[1]
-        print('sdp', sdp)
-        return render_template('answer_session.html', chosen_session=chosen_session, sdp=sdp)
+#
+#
+# @app.route('/answer_session', methods=['GET', 'POST'])
+# def answer_session():
+#     try:
+#         args = request.json
+#     except:
+#         args = request.args if request.args else request.form
+#     print('args', args)
+#
+#     if 'type' in args:
+#         try:
+#             print('entrou no args')
+#             dic = {
+#                 'chosen_session': session['chosen_session'],
+#                 'answer': json.dumps(args)
+#             }
+#             db_tricks.change_row(
+#                 db_file='sessions.db',
+#                 db='answers',
+#                 field='chosen_session',
+#                 criteria=session['chosen_session'],
+#                 dic=dic
+#             )
+#             return jsonify({'status': 'ok'})
+#         except Exception as e:
+#             print(f"Exception in offer: {e}")
+#             return jsonify({'error': 'Internal Server Error'}), 500
+#     else:
+#
+#         ch = db_tricks.search_row(
+#             db_file='sessions.db',
+#             db='sessions',
+#             field='session_id',
+#             criteria=session['chosen_session']
+#         )
+#
+#         chosen_session = ch[0]
+#         sdp = ch[1]
+#         print('sdp', sdp)
+#         return render_template('answer_session.html', chosen_session=chosen_session, sdp=sdp)
 
 
 @app.route('/waiting_room', methods=['GET', 'POST'])
@@ -324,12 +368,13 @@ def waiting_room():  # Função para aguardar aceite de sessão do cliente 2
 
 @app.route('/doctor_room', methods=['GET', 'POST'])
 def doctor_room():  # Função o médico aguardar o paciente
-    return 'doctor room'
+    session_id = session['chosen_session']
+    return render_template('doctor_room.html', session_id=session_id)
 
 
 @app.route('/access_doctor_room', methods=['GET', 'POST'])
 def access_doctor_room():
-
+    session_id = session['session_id']
     return render_template('access_doctor_room.html', session_id=session_id)
 
 

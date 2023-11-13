@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cliente 2 - WebRTC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<video id="local-video" autoplay></video>
+<video id="remote-video" autoplay></video>
+
+<script>
+    const sessionId = '{{ session_id }}'; // Substitua com a ID de sessão apropriada
+    const retryDelay = 20000; // 20 segundos
+    const maxRetries = 15;
+
+    const peerConnection = new RTCPeerConnection();
+
+    peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            sendIceCandidate(event.candidate)
+            .catch(error => {
+                console.error('Falha ao enviar candidato ICE:', error);
+            });
+        }
+    };
+
+
+    async function getOffer() {
+        let retries = 0;
+
+        while (true) {
+            const response = await fetch('/get-offer');
+            if (response.status === 204) {
+                console.log('Nenhuma oferta disponível, tentando novamente...');
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                retries++;
+                if (retries >= maxRetries) {
+                    console.error('Número máximo de tentativas alcançado. Parando de tentar.');
+                    break;
+                }
+            } else if (response.ok) {
+                const data = await response.json();
+                return data.offer;
+            } else {
+                throw new Error(`Erro ao buscar oferta: ${response.statusText}`);
+            }
+        }
+    }
+
+    async function createAnswer(offer) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        return answer;
+    }
+
+    async function sendAnswer(answer) {
+        await fetch('/create-answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ session_id: sessionId, answer: answer })
+        });
+    }
+
+
+    async function sendIceCandidate(candidate) {
+        await fetch('/ice-candidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ session_id: sessionId, candidate: candidate })
+        });
+    }
+
+
+    async function fetchCandidates() {
+        const response = await fetch(`/get-ice-candidate-from-client?session_id=${sessionId}`);
+        if (response.status === 204) {
+            console.log('Ainda não há candidatos ICE, tentando novamente...');
+            setTimeout(fetchCandidates, retryDelay);
+        } else if (response.ok) {
+            const candidates = await response.json();
+            candidates.forEach(async (candidate) => {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            });
+            console.log('Todos os candidatos ICE foram adicionados com sucesso.');
+        } else {
+            throw new Error(`Erro ao buscar candidatos ICE: ${response.statusText}`);
+        }
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('getUserMedia não é suportado neste navegador.');
+    } else {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                document.getElementById('local-video').srcObject = stream;
+                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+            })
+            .then(() => getOffer())
+            .then(offer => createAnswer(offer))
+            .then(answer => sendAnswer(answer))
+            .then(() => fetchCandidates())
+            .catch(error => console.error('Erro durante a troca de oferta-resposta:', error));
+
+        peerConnection.ontrack = event => {
+            const remoteVideo = document.getElementById('remote-video');
+            if (remoteVideo.srcObject !== event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+                console.log('Stream remoto adicionado.');
+            }
+        };
+    }
+</script>
+
+</body>
+</html>
