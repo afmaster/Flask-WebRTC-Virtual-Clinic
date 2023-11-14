@@ -2,102 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Video Call</title>
+    <title>Debug de Câmeras</title>
 </head>
 <body>
+    <h1>Debug de Câmeras</h1>
+    <button id="list-cameras">Listar Câmeras</button>
+    <script>
+        document.getElementById('list-cameras').addEventListener('click', async () => {
+            try {
+                // Solicita acesso à câmera para obter os rótulos dos dispositivos
+                await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
 
-<video id="local-video" autoplay></video>
-<video id="remote-video" autoplay></video></br>
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-<script>
-    const sessionId = '{{ session_id }}';
-    const retryDelay = 8000;
-    const peerConnection = new RTCPeerConnection();
-
-    // Função para enviar a oferta para o servidor
-    async function sendOffer(offer) {
-        const response = await fetch('/offer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ session_id: sessionId, offer })
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok.');
-        }
-        return response.json();
-    }
-
-    // Função para enviar candidatos ICE para o servidor
-    async function sendIceCandidate(candidate) {
-        await fetch('/ice-candidate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ session_id: sessionId, candidate })
-        });
-    }
-
-    // Função para buscar candidatos ICE do cliente 2
-    async function fetchCandidates() {
-        try {
-            const response = await fetch(`/get-ice-candidate-from-doctor?session_id=${sessionId}`);
-            if (response.status === 204) {
-                console.log('Ainda não há candidatos ICE, tentando novamente...');
-                setTimeout(fetchCandidates, retryDelay);
-            } else if (response.ok) {
-                const candidates = await response.json();
-                for (const candidate of candidates) {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                }
-                console.log('Todos os candidatos ICE foram adicionados com sucesso.');
-            } else {
-                throw new Error(`Erro ao buscar candidatos ICE: ${response.statusText}`);
+                console.log('Câmeras Disponíveis:');
+                videoDevices.forEach((device, index) => {
+                    console.log(`Câmera ${index + 1}: ${device.label}, ID: ${device.deviceId}`);
+                });
+            } catch (e) {
+                console.error('Não foi possível listar os dispositivos de câmera:', e);
             }
-        } catch (error) {
-            console.error('Erro ao buscar candidatos ICE:', error);
-        }
-    }
-
-    // Manipulação do evento onicecandidate
-    peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-            sendIceCandidate(event.candidate)
-                .catch(error => console.error('Falha ao enviar candidato ICE:', error));
-        }
-    };
-
-    // Adicionando as mídias locais ao peerConnection
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-            document.getElementById('local-video').srcObject = stream;
-            for (const track of stream.getTracks()) {
-                peerConnection.addTrack(track, stream);
-            }
-            return peerConnection.createOffer();
-        })
-        .then(offer => peerConnection.setLocalDescription(offer))
-        .then(() => sendOffer(peerConnection.localDescription))
-        .then(() => {
-            // Aqui você deverá incluir a lógica para buscar a resposta do cliente 2 (answer)
-            // Depois de receber a resposta, configure a descrição remota
-            const answer = /* Sua lógica para receber a resposta */;
-            return peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        })
-        .then(fetchCandidates)
-        .catch(error => console.error('Error during offer-answer exchange:', error));
-
-    // Manipulação do evento ontrack para adicionar a mídia remota
-    peerConnection.ontrack = event => {
-        const remoteVideo = document.getElementById('remote-video');
-        if (!remoteVideo.srcObject) {
-            remoteVideo.srcObject = event.streams[0];
-            console.log('Remote stream added.');
-        }
-    };
-</script>
-
+        });
+    </script>
 </body>
 </html>

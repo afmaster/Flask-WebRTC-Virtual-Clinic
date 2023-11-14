@@ -1,8 +1,7 @@
 import sqlite3
 from prettytable import from_db_cursor
 import base64
-from Crypto.Cipher import AES
-from Crypto.Protocol.KDF import PBKDF2
+
 from typing import List, Union, Tuple
 from datetime import datetime
 
@@ -390,70 +389,6 @@ def calculate_table_size(db_file: str, db: str) -> int or None:
         print(f"Ocorreu um erro: {e}")
         return None
 
-
-def search_database_with_encrypted_name(db_file: str, db: str, search_columns: List[str], user_input: str,
-                                        APP_PASS: str, SALT: bytes) -> List[Union[str, int]]:
-    """
-    Search an SQLite database for records that match the user input in specified columns.
-
-    Parameters:
-    - db_file (str): Path to the SQLite database file.
-    - db (str): Name of the table in the database.
-    - search_columns (List[str]): List of column names in which to search for the user input.
-    - user_input (str): The input string to search for.
-    - APP_PASS (str): Application password for decrypting encrypted fields.
-    - SALT (bytes): Salt used for decryption.
-
-    Returns:
-    - List[Union[str, int]]: A list of unique `id_case` that match the search criteria.
-    """
-
-    def unpad(s: bytes) -> bytes:
-        return s[:-ord(s[len(s) - 1:])]
-
-    def decrypt_deterministic_data(salt: bytes, encrypted_data: bytes, password: str) -> str:
-        key = PBKDF2(password, salt, dkLen=32)
-        cipher = AES.new(key, AES.MODE_ECB)
-        decrypted = cipher.decrypt(base64.b64decode(encrypted_data))
-        return unpad(decrypted).decode()
-
-    def decrypt_case_name(name: str) -> str:
-        decrypted_name = decrypt_deterministic_data(
-            SALT,
-            name,
-            APP_PASS
-        )
-        return decrypted_name
-
-    safe_user_input = user_input.replace("'", "''")
-    matching_cases = []
-
-    list_of_indexes = []
-    for column in search_columns:
-
-        if column == "name":
-            touple_column = fetch_all_col(db_file, db, "name")
-            entire_column = [decrypt_case_name(element[0]).lower() for element in touple_column]
-
-            for index, element in enumerate(entire_column):
-                if safe_user_input.lower() in element.lower():
-                    list_of_indexes.append(index)
-        else:
-            touple_column = fetch_all_col(db_file, db, column)
-            entire_column = [element[0] for element in touple_column]
-
-            for index, element in enumerate(entire_column):
-                if safe_user_input.lower() in element.lower():
-                    list_of_indexes.append(index)
-
-    if len(list_of_indexes) > 0:
-        list_of_indexes = list(set(list_of_indexes))
-
-        complete_column_id_cases = [element[0] for element in fetch_all_col(db_file, db, "id_case")]
-        for i in list_of_indexes:
-            matching_cases.append(complete_column_id_cases[i])
-
-    return matching_cases
 
 
 def return_column_index(db_file: str, db: str, column):

@@ -41,7 +41,7 @@
         let response;
         let retries = 0; // Contador de tentativas
         do {
-            response = await fetch(`/get-answer?sessionId=${sessionId}`);
+            response = await fetch(`/get-answer?session_id=${sessionId}`);
             if (response.status === 204) {
                 console.log('Ainda não há resposta (answer), tentando novamente...');
                 await new Promise(resolve => setTimeout(resolve, retryDelay));

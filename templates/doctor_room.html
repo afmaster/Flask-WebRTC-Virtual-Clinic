@@ -32,7 +32,7 @@
         let retries = 0;
 
         while (true) {
-            const response = await fetch('/get-offer');
+            const response = await fetch(`/get-offer?session_id=${sessionId}`);
             if (response.status === 204) {
                 console.log('Nenhuma oferta disponível, tentando novamente...');
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -104,7 +104,11 @@
                 stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
             })
             .then(() => getOffer())
-            .then(offer => createAnswer(offer))
+            .then(offer => {
+            console.log("offer:");
+            console.log(offer);
+            createAnswer(offer);
+            })
             .then(answer => sendAnswer(answer))
             .then(() => fetchCandidates())
             .catch(error => console.error('Erro durante a troca de oferta-resposta:', error));
