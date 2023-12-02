@@ -21,7 +21,7 @@ Database Integration: Integration with a database (e.g., SQLite, PostgreSQL) for
 
 Security Features: Implementation of security measures to protect sensitive data, including authentication mechanisms for doctors and patients.
 
-Installation and Setup
+## Installation and Setup
 Clone the Repository:
 
 bash
@@ -31,5 +31,8 @@ Install Dependencies:
 
 ```pip install -r requirements.txt```
 
-License
+## License
 The project is licensed under the MIT License
+
+## Security Notice
+:warning: Important Security Considerations: This project involves the use of APIs and the handling of sensitive patient data. As such, it is imperative to implement robust security measures. This includes, but is not limited to, secure handling of API keys, ensuring data encryption in transit and at rest, and adherence to privacy laws and regulations like HIPAA (Health Insurance Portability and Accountability Act) or GDPR (General Data Protection Regulation), depending on the region of operation. Failure to adequately secure this data can lead to serious privacy breaches and legal repercussions.
